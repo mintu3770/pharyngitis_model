@@ -1,0 +1,236 @@
+import streamlit as st
+import numpy as np
+from PIL import Image
+import io
+import os
+import time # For simulating loading time
+
+# --- IMPORTANT: Import your actual AI model library here ---
+import tensorflow as tf
+# If your model is from another library (e.g., scikit-learn, PyTorch), import it here.
+
+# --- PharyngitisModel Class (Integrate Your Actual Model Here) ---
+class PharyngitisModel:
+    def __init__(self):
+        self.model = None
+        st.session_state.get('model_status', 'Model not initialized.')
+
+    def load_model(self, model_path):
+        st.session_state.model_status = f"Attempting to load model from: '{model_path}'"
+        try:
+            # --- YOUR ACTUAL MODEL LOADING CODE GOES HERE ---
+            if os.path.exists(model_path):
+                self.model = tf.keras.models.load_model(model_path)
+                st.session_state.model_status = "Model loaded successfully."
+            else:
+                # Simulate loaded model if file not found, for easier testing without a real .h5
+                if "best_pharyngitis_model_fold_" in model_path:
+                    self.model = True
+                    st.session_state.model_status = "Model loaded successfully (simulated - real file not found)."
+                else:
+                    st.session_state.model_status = f"Error: Model file '{model_path}' not found."
+                    self.model = None
+        except Exception as e:
+            st.session_state.model_status = f"Error loading model: {e}"
+            self.model = None
+
+    def predict_with_features(self, image_array):
+        """
+        Performs prediction on the given preprocessed image array.
+        --- REPLACE THIS SECTION WITH YOUR ACTUAL MODEL PREDICTION LOGIC ---
+        """
+        if self.model is None or self.model is True:
+            if self.model is True: # Simulated model
+                st.session_state.prediction_status = "Simulating prediction (real model not loaded)."
+                time.sleep(2)
+                # Simulate a more detailed output: probability of positive, and a dummy feature array
+                prediction_probability = np.random.rand(1, 1)[0][0]
+                confidence_score = 0.8 + (np.random.rand() * 0.2)
+                features = np.random.rand(1, 256)
+                return prediction_probability, confidence_score, features
+            else:
+                raise ValueError("Model not loaded. Please call load_model() first.")
+
+        st.session_state.prediction_status = f"Received image array for prediction with shape: {image_array.shape}"
+
+        # --- YOUR ACTUAL MODEL PREDICTION CODE GOES HERE ---
+        try:
+            predictions = self.model.predict(image_array)
+            prediction_probability = predictions[0][1] if predictions.shape[1] > 1 else predictions[0][0]
+            confidence_score = prediction_probability # Using prediction probability as confidence
+            features = np.random.rand(1, 256) # Replace with actual feature extraction if applicable
+
+            st.session_state.prediction_status = "Prediction generated successfully."
+            return prediction_probability, confidence_score, features
+        except Exception as e:
+            st.session_state.prediction_status = f"Error during actual prediction: {e}"
+            raise e
+
+
+# --- Image Relevance Check (Placeholder) ---
+def is_image_relevant(image: Image.Image) -> bool:
+    """
+    Placeholder function to check if the image is 'relevant' (e.g., a throat image).
+    In a real-world application, this would involve a separate, lightweight AI model
+    trained to classify images as "throat", "face", "landscape", "irrelevant", etc.,
+    or other computer vision techniques to detect specific features.
+    For demonstration, this function always returns True.
+    """
+    # Example: You could do a basic aspect ratio check, but that's very weak for relevance.
+    # width, height = image.size
+    # if width / height < 0.5 or width / height > 2.0:
+    #     return False
+
+    # IMPORTANT: Replace this with your actual image relevance logic
+    # For now, we'll simulate a random chance of it being irrelevant,
+    # or always return True for testing the main prediction flow.
+    # return np.random.rand() > 0.9 # Simulate 10% chance of being irrelevant
+    return True # For continuous testing, assume all images are relevant
+
+
+# --- Streamlit Application Layout ---
+
+st.set_page_config(
+    page_title="Pharyngitis Detector",
+    page_icon="⚕️",
+    layout="centered",
+    initial_sidebar_state="auto"
+)
+
+st.title("⚕️ Pharyngitis Detector App")
+st.markdown("""
+Upload an image of a throat, or take a real-time photo. The AI model will provide a
+simulated or actual prediction regarding the likelihood of pharyngitis.
+""")
+
+# --- AI Disclaimer ---
+st.warning("""
+**Disclaimer:** This application uses an AI model for **demonstration and informational purposes only**.
+It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always seek the
+advice of a qualified healthcare provider for any medical concerns. Do not disregard professional
+medical
+medical advice or delay in seeking it because of information presented by this AI.
+""")
+
+if 'model_instance' not in st.session_state:
+    st.session_state.model_instance = PharyngitisModel()
+    st.session_state.model_instance.load_model('best_pharyngitis_model_fold_0.h5')
+
+st.info(st.session_state.get('model_status', 'Initializing model...'))
+
+# --- Image Input Option ---
+input_method = st.radio(
+    "Choose input method:",
+    ("Upload Image", "Take Photo"),
+    horizontal=True
+)
+
+uploaded_file = None
+camera_photo = None
+
+if input_method == "Upload Image":
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+else: # "Take Photo"
+    camera_photo = st.camera_input("Take a photo")
+
+image = None
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
+    st.image(image, caption='Uploaded Image.', use_column_width=True)
+elif camera_photo is not None:
+    image = Image.open(camera_photo)
+    st.image(image, caption='Taken Photo.', use_column_width=True)
+
+prediction_placeholder = st.empty()
+
+if image is not None:
+    st.write("") # Add a little space
+
+    if st.button("Get Prediction"):
+        if st.session_state.model_instance.model is None and st.session_state.model_instance.model is not True:
+            st.error("Model not loaded. Please check the model path and ensure it's available.")
+        else:
+            # --- Check Image Relevance ---
+            if not is_image_relevant(image):
+                st.error("The submitted image does not appear to be a relevant throat image. Please upload or take a photo of a throat.")
+            else:
+                with st.spinner('Processing image and getting prediction...'):
+                    try:
+                        img_array = np.array(image)
+
+                        if img_array.ndim == 2:
+                            img_array = np.stack((img_array,)*3, axis=-1)
+                        elif img_array.shape[2] == 4:
+                            img_array = img_array[:, :, :3]
+
+                        img_resized = Image.fromarray(img_array).resize((224, 224))
+                        img_processed = np.array(img_resized).astype(np.float32)
+                        img_processed /= 255.0
+
+                        img_for_prediction = np.expand_dims(img_processed, axis=0)
+
+                        prediction_score, confidence_score, extracted_features = st.session_state.model_instance.predict_with_features(img_for_prediction)
+
+                        if prediction_score > 0.7:
+                            interpretation = "High probability of Pharyngitis detected."
+                            st.error(f"**Prediction:** {interpretation}")
+                        elif prediction_score > 0.4:
+                            interpretation = "Moderate probability of Pharyngitis detected."
+                            st.warning(f"**Prediction:** {interpretation}")
+                        else:
+                            interpretation = "Low probability of Pharyngitis detected."
+                            st.success(f"**Prediction:** {interpretation}")
+
+                        st.markdown(f"**Confidence Score:** {confidence_score:.2f}")
+                        st.markdown(f"*(Simulated features shape: {extracted_features.shape})*")
+
+                        st.subheader("About Pharyngitis (Sore Throat)")
+                        st.markdown("""
+                        Pharyngitis, commonly known as a sore throat, is an inflammation of the pharynx (the back of the throat).
+                        It often causes discomfort, scratchiness, or pain, especially when swallowing. It's a very common
+                        condition and usually not a cause for serious concern.
+                        """)
+
+                        st.markdown("---")
+                        st.subheader("Common Causes:")
+                        st.markdown("""
+                        * **Viral Infections:** Most sore throats are caused by viruses, such as those that cause the common cold, flu, or mononucleosis.
+                        * **Bacterial Infections:** Less commonly, it can be caused by bacteria, with Group A Streptococcus (strep throat) being a well-known example. Bacterial pharyngitis may require antibiotics.
+                        * **Allergies:** Post-nasal drip from allergies can irritate the throat.
+                        * **Dry Air:** Breathing dry air, especially indoors during winter or with mouth breathing, can lead to dryness and irritation.
+                        * **Irritants:** Exposure to smoke, pollution, or chemical irritants.
+                        * **Voice Strain:** Overuse or misuse of the voice.
+                        """)
+
+                        st.markdown("---")
+                        st.subheader("General Tips & Home Remedies (from common knowledge):")
+                        st.markdown("""
+                        * **Rest:** Get plenty of rest, especially for your voice.
+                        * **Stay Hydrated:** Drink plenty of fluids like water, warm tea with honey, or clear broths. Avoid caffeine and alcohol.
+                        * **Gargle with Salt Water:** Mix 1/4 to 1/2 teaspoon of salt in 1 cup (250 mL) of warm water and gargle. This can help soothe the throat and reduce inflammation.
+                        * **Honey:** Honey can help soothe the throat. Mix it with warm water or tea. (Note: Do not give honey to infants under 1 year old due to the risk of botulism).
+                        * **Lozenges or Hard Candy:** These can help stimulate saliva production, which keeps the throat moist and can relieve pain.
+                        * **Humidifier:** Use a cool-mist humidifier to add moisture to the air, which can alleviate dryness and irritation.
+                        * **Avoid Irritants:** Steer clear of smoke, very spicy foods, and very hot liquids.
+                        * **Over-the-Counter Pain Relievers:** Medications like acetaminophen (paracetamol) or ibuprofen can help relieve pain and fever.
+                        """)
+
+                        st.markdown("---")
+                        st.subheader("When to See a Doctor:")
+                        st.markdown("""
+                        It's advisable to consult a healthcare professional if you experience:
+                        * A sore throat lasting longer than a week or getting worse.
+                        * Severe difficulty swallowing or breathing.
+                        * High fever (above 100.4°F or 38°C).
+                        * Swollen, tender glands in your neck.
+                        * A rash or white patches on your tonsils.
+                        * Blood in your saliva or phlegm.
+                        """)
+
+
+                    except ValueError as ve:
+                        st.error(f"Prediction Error: {ve}")
+                    except Exception as e:
+                        st.error(f"An unexpected error occurred: {e}")
+else:
+    prediction_placeholder.empty() # Clear prediction if no file is uploaded
