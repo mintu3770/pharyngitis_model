@@ -1,31 +1,14 @@
-import sys
+import streamlit as st
+import numpy as np
+from PIL import Image
+import io
+import os
+import time
+import tensorflow as tf
+from dotenv import load_dotenv
+from pyngrok import ngrok # Required for Colab/remote public URL
 import subprocess
-
-# --- Check and Install Missing Packages ---
-# This block ensures all necessary libraries are installed before the app runs.
-# It's particularly useful for environments like GitHub Codespaces or fresh setups.
-try:
-    import streamlit as st
-    import numpy as np
-    from PIL import Image
-    import io
-    import os
-    import time
-    import tensorflow as tf
-    from dotenv import load_dotenv
-    from pyngrok import ngrok
-    import threading # Used for ngrok in Colab/Codespaces
-except ImportError:
-    st.warning("Some required packages are not found. Attempting to install them from requirements.txt...")
-    try:
-        # Assuming requirements.txt is in the same directory as app.py
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
-        st.success("All required packages installed! Please refresh your browser or rerun the app.")
-        st.stop() # Stop the current execution so Streamlit can re-run with new packages
-    except Exception as e:
-        st.error(f"Failed to install packages automatically: {e}")
-        st.error("Please ensure your internet connection is stable and try rebuilding your Codespace, or install manually using `pip install -r requirements.txt`.")
-        st.stop() # Stop if installation fails
+import threading
 
 # --- Load environment variables from .env file ---
 load_dotenv()
