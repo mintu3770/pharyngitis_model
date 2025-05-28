@@ -1,6 +1,6 @@
 streamlit
 numpy
 Pillow
-tensorflow==2.16.1 # Or tensorflow==2.15.0
+tensorflow==2.15.0 # <-- Try this specific version
 python-dotenv
 pyngrok
