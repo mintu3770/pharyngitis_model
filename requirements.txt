@@ -1,6 +1,6 @@
 streamlit==1.45.1
-numpy==2.2.6
+numpy==1.26.4  # <--- CHANGED THIS LINE
 Pillow==11.2.1
 tensorflow==2.15.0
 python-dotenv==1.0.1
-pyngrok==7.1.0 # This is now optional for Render, but harmless if present
+pyngrok==7.1.0
