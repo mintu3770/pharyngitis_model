@@ -1,9 +1,9 @@
-# --- Conditional Package Installation ---
-# This block attempts to import necessary libraries. If any are missing,
-# it will try to install them via pip. This is useful for self-contained
-# execution environments like new Colab sessions.
-# For production deployments (e.g., Streamlit Cloud), it's generally
-# recommended to rely solely on requirements.txt for dependency management.
+import sys
+import subprocess
+
+# --- Check and Install Missing Packages ---
+# This block ensures all necessary libraries are installed before the app runs.
+# It's particularly useful for environments like GitHub Codespaces or fresh setups.
 try:
     import streamlit as st
     import numpy as np
@@ -13,30 +13,19 @@ try:
     import time
     import tensorflow as tf
     from dotenv import load_dotenv
-    from pyngrok import ngrok # Required for Colab/remote public URL
-    import subprocess
-    import threading
+    from pyngrok import ngrok
+    import threading # Used for ngrok in Colab/Codespaces
 except ImportError:
-    import subprocess
-    import sys
-    st.warning("Some required packages are not found. Attempting to install them...")
-    required_packages = [
-        "streamlit",
-        "numpy",
-        "Pillow",
-        "tensorflow",
-        "python-dotenv",
-        "pyngrok"
-    ]
+    st.warning("Some required packages are not found. Attempting to install them from requirements.txt...")
     try:
-        for package in required_packages:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        st.success("All required packages installed! Please refresh the page or rerun the app.")
-        # Streamlit needs to re-run after installs. Using st.stop() or a message is good.
-        st.stop()
+        # Assuming requirements.txt is in the same directory as app.py
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+        st.success("All required packages installed! Please refresh your browser or rerun the app.")
+        st.stop() # Stop the current execution so Streamlit can re-run with new packages
     except Exception as e:
-        st.error(f"Failed to install packages: {e}. Please install them manually using `pip install -r requirements.txt`.")
-        st.stop()
+        st.error(f"Failed to install packages automatically: {e}")
+        st.error("Please ensure your internet connection is stable and try rebuilding your Codespace, or install manually using `pip install -r requirements.txt`.")
+        st.stop() # Stop if installation fails
 
 # --- Load environment variables from .env file ---
 load_dotenv()
@@ -253,38 +242,30 @@ if image is not None:
 else:
     prediction_placeholder.empty()
 
-# --- Code below is for running Streamlit in Google Colab (if applicable) ---
-# If you're running locally and don't need a public URL, you can remove this section.
+# --- Code below is for running Streamlit in GitHub Codespaces with ngrok ---
+# This part is specifically for getting a public URL if your Codespace is not
+# automatically forwarding port 8501 or if you need a persistent ngrok tunnel.
 if NGROK_AUTH_TOKEN:
-    # Ensure ngrok is imported if not already during the initial try block
+    # This block assumes pyngrok and other dependencies are already installed via requirements.txt
+    # in the Codespace build process.
     try:
-        from pyngrok import ngrok
-        import subprocess
-        import threading
-    except ImportError:
-        st.error("pyngrok is required for public URL tunneling but could not be imported.")
-        st.stop() # Stop if ngrok isn't available for Colab execution.
+        # Check if a tunnel is already active to avoid creating multiple
+        tunnels = ngrok.get_tunnels()
+        public_url = next((t.public_url for t in tunnels if t.proto == "http"), None)
 
-    # Start Streamlit in a separate thread
-    def run_streamlit():
-        # Use --server.enableCORS false and --server.enableXsrfProtection false for Colab compatibility
-        subprocess.run(["streamlit", "run", "app.py", "--server.enableCORS", "false", "--server.enableXsrfProtection", "false"])
-
-    # Only start the thread and ngrok if not already running (to prevent multiple tunnels)
-    if 'streamlit_thread_started' not in st.session_state:
-        streamlit_thread = threading.Thread(target=run_streamlit)
-        streamlit_thread.start()
-        st.session_state.streamlit_thread_started = True # Mark thread as started
-
-        try:
+        if not public_url:
             ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-            public_url = ngrok.connect(8501) # Streamlit's default port is 8501
+            public_url = ngrok.connect(8501).public_url # Streamlit's default port is 8501
             st.success(f"Your Streamlit app is live at: {public_url}")
-            print(f"Your Streamlit app is live at: {public_url}") # For Colab output
-        except Exception as e:
-            st.error(f"Error creating ngrok tunnel: {e}")
-            print(f"Error creating ngrok tunnel: {e}")
+            print(f"Your Streamlit app is live at: {public_url}") # For Codespace terminal output
+        else:
+            st.info(f"Streamlit app already running at: {public_url}")
+            print(f"Streamlit app already running at: {public_url}")
+
+    except Exception as e:
+        st.error(f"Error creating ngrok tunnel or connecting: {e}")
+        print(f"Error creating ngrok tunnel or connecting: {e}")
 else:
     st.warning("NGROK_AUTH_TOKEN not found in .env. Public URL tunneling via ngrok will not be available.")
-    print("NGROK_AUTH_TOKEN not found in .env. Cannot create public URL.")
-    print("Please add NGROK_AUTH_TOKEN='YOUR_TOKEN_HERE' to your .env file for public access in Colab.")
+    print("NGROK_AUTH_TOKEN not found in .env. Cannot create public URL via ngrok.")
+    print("Ensure NGROK_AUTH_TOKEN='YOUR_TOKEN_HERE' is in your .env file.")
