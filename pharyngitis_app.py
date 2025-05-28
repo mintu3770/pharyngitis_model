@@ -5,9 +5,16 @@ import io
 import os
 import time # For simulating loading time
 
+# Import dotenv to load environment variables
+from dotenv import load_dotenv
+
 # --- IMPORTANT: Import your actual AI model library here ---
 import tensorflow as tf
-# If your model is from another library (e.g., scikit-learn, PyTorch), import it here.
+
+# --- Load environment variables from .env file ---
+load_dotenv()
+# Access your ngrok token
+NGROK_AUTH_TOKEN = os.getenv("NGROK_AUTH_TOKEN")
 
 # --- PharyngitisModel Class (Integrate Your Actual Model Here) ---
 class PharyngitisModel:
@@ -23,7 +30,6 @@ class PharyngitisModel:
                 self.model = tf.keras.models.load_model(model_path)
                 st.session_state.model_status = "Model loaded successfully."
             else:
-                # Simulate loaded model if file not found, for easier testing without a real .h5
                 if "best_pharyngitis_model_fold_" in model_path:
                     self.model = True
                     st.session_state.model_status = "Model loaded successfully (simulated - real file not found)."
@@ -43,7 +49,6 @@ class PharyngitisModel:
             if self.model is True: # Simulated model
                 st.session_state.prediction_status = "Simulating prediction (real model not loaded)."
                 time.sleep(2)
-                # Simulate a more detailed output: probability of positive, and a dummy feature array
                 prediction_probability = np.random.rand(1, 1)[0][0]
                 confidence_score = 0.8 + (np.random.rand() * 0.2)
                 features = np.random.rand(1, 256)
@@ -71,20 +76,8 @@ class PharyngitisModel:
 def is_image_relevant(image: Image.Image) -> bool:
     """
     Placeholder function to check if the image is 'relevant' (e.g., a throat image).
-    In a real-world application, this would involve a separate, lightweight AI model
-    trained to classify images as "throat", "face", "landscape", "irrelevant", etc.,
-    or other computer vision techniques to detect specific features.
     For demonstration, this function always returns True.
     """
-    # Example: You could do a basic aspect ratio check, but that's very weak for relevance.
-    # width, height = image.size
-    # if width / height < 0.5 or width / height > 2.0:
-    #     return False
-
-    # IMPORTANT: Replace this with your actual image relevance logic
-    # For now, we'll simulate a random chance of it being irrelevant,
-    # or always return True for testing the main prediction flow.
-    # return np.random.rand() > 0.9 # Simulate 10% chance of being irrelevant
     return True # For continuous testing, assume all images are relevant
 
 
@@ -108,7 +101,6 @@ st.warning("""
 **Disclaimer:** This application uses an AI model for **demonstration and informational purposes only**.
 It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always seek the
 advice of a qualified healthcare provider for any medical concerns. Do not disregard professional
-medical
 medical advice or delay in seeking it because of information presented by this AI.
 """)
 
@@ -234,3 +226,29 @@ if image is not None:
                         st.error(f"An unexpected error occurred: {e}")
 else:
     prediction_placeholder.empty() # Clear prediction if no file is uploaded
+
+# --- Code below is for running Streamlit in Google Colab (if applicable) ---
+# If you're running locally, you can remove this section entirely.
+# If running in Colab, ensure pyngrok is installed.
+# !pip install pyngrok -q
+from pyngrok import ngrok
+import subprocess
+import threading
+
+# Start Streamlit in a separate thread
+def run_streamlit():
+    subprocess.run(["streamlit", "run", "app.py", "--server.enableCORS", "false", "--server.enableXsrfProtection", "false"])
+
+# Start the Streamlit thread
+streamlit_thread = threading.Thread(target=run_streamlit)
+streamlit_thread.start()
+
+# Create a ngrok tunnel
+# Use the token loaded from .env
+if NGROK_AUTH_TOKEN:
+    ngrok.set_auth_token(NGROK_AUTH_TOKEN)
+    public_url = ngrok.connect(8501) # Streamlit's default port is 8501
+    print(f"Your Streamlit app is live at: {public_url}")
+else:
+    print("NGROK_AUTH_TOKEN not found in .env. Cannot create public URL.")
+    print("Please add NGROK_AUTH_TOKEN='YOUR_TOKEN_HERE' to your .env file.")
