@@ -104,7 +104,6 @@ class PharynxImagePreprocessor:
         upper_yellow = np.array([35, 255, 255])
         yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
         
-        # Combine masks for all types of patches
         patch_mask = cv2.bitwise_or(white_mask, yellow_mask)
         
         # Find contours of detected patches
