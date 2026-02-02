@@ -6,15 +6,9 @@ import os
 import time
 import tensorflow as tf
 from dotenv import load_dotenv
-# from pyngrok import ngrok # <<< COMMENT OUT or REMOVE this line
-# import subprocess # <<< COMMENT OUT or REMOVE this line
-# import threading # <<< COMMENT OUT or REMOVE this line
 
-# --- Load environment variables from .env file ---
 load_dotenv()
-# NGROK_AUTH_TOKEN = os.getenv("NGROK_AUTH_TOKEN") # <<< COMMENT OUT or REMOVE this line
 
-# --- PharyngitisModel Class (Integrate Your Actual Model Here) ---
 class PharyngitisModel:
     def __init__(self):
         self.model = None
@@ -224,26 +218,3 @@ if image is not None:
                         st.error(f"An unexpected error occurred: {e}")
 else:
     prediction_placeholder.empty()
-
-# --- REMOVE OR COMMENT OUT THIS ENTIRE NGROK BLOCK FOR RENDER ---
-# if NGROK_AUTH_TOKEN:
-#     try:
-#         tunnels = ngrok.get_tunnels()
-#         public_url = next((t.public_url for t in tunnels if t.proto == "http"), None)
-#
-#         if not public_url:
-#             ngrok.set_auth_token(NGROK_AUTH_TOKEN)
-#             public_url = ngrok.connect(8501).public_url
-#             st.success(f"Your Streamlit app is live at: {public_url}")
-#             print(f"Your Streamlit app is live at: {public_url}")
-#         else:
-#             st.info(f"Streamlit app already running at: {public_url}")
-#             print(f"Streamlit app already running at: {public_url}")
-#
-#     except Exception as e:
-#         st.error(f"Error creating ngrok tunnel or connecting: {e}")
-#         print(f"Error creating ngrok tunnel or connecting: {e}")
-# else:
-#     st.warning("NGROK_AUTH_TOKEN not found in .env. Public URL tunneling via ngrok will not be available.")
-#     print("NGROK_AUTH_TOKEN not found in .env. Cannot create public URL via ngrok.")
-#     print("Ensure NGROK_AUTH_TOKEN='YOUR_TOKEN_HERE' is in your .env file.")
